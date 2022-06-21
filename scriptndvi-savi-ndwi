@@ -1,0 +1,83 @@
+//Paso 2: acceda a los datos de reflectancia de superficie de nivel 1 de Landsat 8 y 
+//fíltrelos para todas las imágenes del año 2015 que se encuentran dentro de los límites 
+//de las geometrías. 
+
+
+var ls8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_SR')
+                  .filterBounds(geometry)
+                  .filterDate('2015-06-01', '2015-07-31')
+                  .select('B1','B2','B3','B4','B5','B6','B7')
+                  .filter(ee.Filter.lt('CLOUD_COVER', 20));
+
+//Imprima su colección de imágenes en la pestaña de su consola para inspeccionarla                  
+print(ls8, 'Landsat8 2015');
+Map.centerObject(ls8,9)
+//mediana de imágenes   
+var ls8_median = ls8.median()
+                    .clip(geometry);
+                    
+ print(ls8_median, 'Mediana Julio 2015');
+  //Agregue su imagen como una capa de mapa, parámetros de visualización
+ var visParams = {'min': 400,'max': [4000,3000,3000],'bands':'B4,B3,B2'};
+Map.addLayer(ls8_median, visParams, 'Julio 2015');
+//Degradado de tonos marrones a verdes, con un fuerte enfoque en el lado verde. 
+var viss= 
+{min:- 0.2,
+max:0.8, palette : ['FFFFFF', 'CE7E45', 'DF923D', 'F1B555', 'FCD163', '99B718',
+'74A901', '66A000','529400','3E8601','207401','056201','004C44',
+'023B01','012E01','011D01','011301']}
+
+//NDVI
+var NDVI = ls8_median.expression ( "(NIR-RED)/(NIR + RED)" 
+,
+{
+"NIR": ls8_median.select("B5"),
+"RED": ls8_median.select("B4")});
+
+
+
+//SAVI
+var SAVI = ls8_median.expression ( "(((NIR-RED)/(NIR+RED+L))*(1+L))",
+{"L": 0.5, 
+
+"NIR": ls8_median.select("B5"),
+"RED": ls8_median.select("B4")
+  
+})
+
+//NDWI
+var NDWI = ls8_median.expression ( "(NIR - SWIR ) / (NIR + SWIR)",
+{
+
+"NIR": ls8_median.select("B5"),
+"SWIR": ls8_median.select("B6")})
+
+Map.addLayer(NDVI, viss, 'Indice NDVI')                  
+Map.addLayer(SAVI, viss, 'Indice Savi')
+Map.addLayer(NDWI, viss, 'Indice NDWI')
+
+
+Export.image.toDrive({
+image:NDVI,
+description:'NDVI2015',
+scale:1500,
+region:geometry
+})
+
+Export.image.toDrive({
+image:NDWI,
+description:'NDWI2015',
+scale:1500,
+region:geometry
+})
+
+Export.image.toDrive({
+image:SAVI,
+description:'SAVI2015',
+scale:1500,
+region:geometry
+})
+© 2022 GitHub, Inc.
+Terms
+Privacy
+Security
